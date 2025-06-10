@@ -4,4 +4,11 @@ version = "0.0.1"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = []
+dependencies = [
+    "pytest-bdd>=8.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "kedro>=0.19.13",
+]
