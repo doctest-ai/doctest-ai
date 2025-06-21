@@ -10,5 +10,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "dlt>=1.11.0",
     "kedro>=0.19.13",
 ]
