@@ -16,7 +16,15 @@ def install_package(request, package):
 @when(parsers.parse("I ask Claude to {prompt}"))
 def create_project(request, tmp_path, prompt):
     res = run(
-        ["claude", "-p", prompt, "--allowedTools", "Bash(kedro new:*)"],
+        [
+            "claude",
+            "-p",
+            prompt,
+            "--allowedTools",
+            "Bash(kedro new:*)",
+            "--model",
+            "claude-3-7-sonnet-20250219",
+        ],
         cwd=tmp_path,
         env=request.env,
     )
