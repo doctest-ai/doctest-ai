@@ -2,7 +2,7 @@ import subprocess
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
-from pytest_bdd import scenario, when, then
+from pytest_bdd import scenario, given, when, then, parsers
 
 from .sh_run import run
 
@@ -12,6 +12,12 @@ OK_EXIT_CODE = 0
 @scenario("init.feature", "Create a new dlt project")
 def test_init():
     pass
+
+
+@given(parsers.parse("I have installed {package}"))
+def install_package(request, package):
+    """Install the specified package."""
+    run(["uv", "pip", "install", package], check=True, env=request.env)
 
 
 @when(
@@ -29,12 +35,17 @@ def create_project(request, tmp_path):
             "Write",
         ],
         cwd=tmp_path,
+        env=request.env,
     )
     assert res.returncode == OK_EXIT_CODE, res
 
     def run_pipeline(tmp_path):
         return subprocess.run(
-            ["python", "pokemon_pipeline.py"], stdout=PIPE, stderr=STDOUT, cwd=tmp_path
+            ["python", "pokemon_pipeline.py"],
+            stdout=PIPE,
+            stderr=STDOUT,
+            cwd=tmp_path,
+            env=request.env,
         )
 
     max_iterations = 3
@@ -57,17 +68,12 @@ def create_project(request, tmp_path):
             ],
             input=res.stdout,
             cwd=tmp_path,
+            env=request.env,
         )
         assert res.returncode == OK_EXIT_CODE, res
 
 
 @then("the pipeline runs successfully")
-def run_pipeline(tmp_path):
-    res = run(
-        [
-            "python",
-            "pokemon_pipeline.py",
-        ],
-        cwd=tmp_path,
-    )
+def run_pipeline(request, tmp_path):
+    res = run(["python", "pokemon_pipeline.py"], cwd=tmp_path, env=request.env)
     assert res.returncode == OK_EXIT_CODE, res
