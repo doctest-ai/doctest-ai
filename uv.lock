@@ -14,7 +14,7 @@ wheels = [
 [[package]]
 name = "doctest-ai"
 version = "0.0.1"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "pytest-bdd" },
 ]
