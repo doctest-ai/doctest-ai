@@ -1,6 +1,6 @@
-from pytest_bdd import scenarios, given, when, then, parsers
+from pytest_bdd import given, parsers, scenarios, then, when
 
-from .sh_run import run
+from doctest_ai.sh_run import run
 
 OK_EXIT_CODE = 0
 
