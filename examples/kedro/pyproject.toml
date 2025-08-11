@@ -1,0 +1,5 @@
+[tool.doctest-ai.claude-code]
+allowed_tools = [
+    "Bash(kedro new:*)",
+]
+model = "claude-3-7-sonnet-20250219"

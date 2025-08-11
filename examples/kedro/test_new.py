@@ -13,24 +13,6 @@ def install_package(request, package):
     run(["uv", "pip", "install", package], check=True, env=request.env)
 
 
-@when(parsers.parse("I ask Claude to {prompt}"))
-def create_project(request, tmp_path, prompt):
-    res = run(
-        [
-            "claude",
-            "-p",
-            prompt,
-            "--allowedTools",
-            "Bash(kedro new:*)",
-            "--model",
-            "claude-3-7-sonnet-20250219",
-        ],
-        cwd=tmp_path,
-        env=request.env,
-    )
-    assert res.returncode == OK_EXIT_CODE, res
-
-
 @then("the expected project directories and files should be created")
 def check_created_project_structure(tmp_path):
     """Check the subdirectories created by kedro new."""

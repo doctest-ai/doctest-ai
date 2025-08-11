@@ -1,7 +1,14 @@
 import os
 from pathlib import Path
 
+import pytest
+from pytest_bdd import parsers, when
+
+from doctest_ai._config import ClaudeCodeSettings
+
 from .sh_run import run
+
+OK_EXIT_CODE = 0
 
 
 def pytest_bdd_before_scenario(request, feature, scenario):
@@ -47,3 +54,23 @@ def _create_new_venv(request) -> Path:
 def _setup_minimal_env(request):
     venv_dir = _create_new_venv(request)
     _setup_context_with_venv(request, venv_dir)
+
+
+def _build_command(prompt):
+    cmd = ["claude", "--print", prompt]
+    settings = ClaudeCodeSettings()
+
+    if settings.allowed_tools:
+        cmd += ["--allowedTools", ",".join(settings.allowed_tools)]
+
+    if settings.model:
+        cmd += ["--model", settings.model]
+
+    return cmd
+
+
+@when(parsers.parse("I ask Claude to {prompt}"))
+def _(request, tmp_path, prompt):
+    cmd = _build_command(prompt)
+    res = run(cmd, cwd=tmp_path, env=request.env)
+    assert res.returncode == OK_EXIT_CODE, res
