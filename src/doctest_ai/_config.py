@@ -7,6 +7,26 @@ from pydantic_settings import (
 )
 
 
+class Settings(BaseSettings):
+    """Configuration that is not specific to the agent for execution."""
+
+    max_iterations: int | None = None
+    model_config = SettingsConfigDict(
+        pyproject_toml_table_header=("tool", "doctest-ai"), extra="ignore"
+    )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return init_settings, PyprojectTomlConfigSettingsSource(settings_cls)
+
+
 class ClaudeCodeSettings(BaseSettings):
     """Configuration to set the CLI options available in Claude Code."""
 
@@ -26,4 +46,4 @@ class ClaudeCodeSettings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        return (PyprojectTomlConfigSettingsSource(settings_cls),)
+        return init_settings, PyprojectTomlConfigSettingsSource(settings_cls)
