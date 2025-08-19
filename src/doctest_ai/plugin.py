@@ -126,10 +126,10 @@ def _(request, tmp_path, prompt, settings):
     res = run(cmd, cwd=tmp_path, env=request.env)
     assert res.returncode == OK_EXIT_CODE, res
 
-    if (max_iterations := Settings().max_iterations) is None:
+    if (max_retries := Settings().max_retries) is None:
         return
 
-    for i in range(max_iterations):
+    for i in range(max_retries):
         try:
             _execute_then_step_functions(request)
         except exceptions.StepDefinitionNotFoundError:

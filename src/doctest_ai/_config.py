@@ -10,7 +10,7 @@ from pydantic_settings import (
 class Settings(BaseSettings):
     """Configuration that is not specific to the agent for execution."""
 
-    max_iterations: int | None = None
+    max_retries: int | None = None
     model_config = SettingsConfigDict(
         pyproject_toml_table_header=("tool", "doctest-ai"), extra="ignore"
     )
