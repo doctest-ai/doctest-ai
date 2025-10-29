@@ -3,3 +3,7 @@ max_retries = 3
 
 [tool.doctest-ai.claude-code]
 model = "claude-3-7-sonnet-20250219"
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "INFO"

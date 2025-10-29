@@ -1,3 +1,4 @@
+import logging
 import os
 import subprocess
 import traceback
@@ -12,6 +13,8 @@ from doctest_ai._config import ClaudeCodeSettings, Settings
 from .sh_run import run
 
 OK_EXIT_CODE = 0
+
+logger = logging.getLogger(__name__)
 
 
 def pytest_bdd_before_scenario(request, feature, scenario):
@@ -137,6 +140,11 @@ def _(request, tmp_path, prompt, settings):
         except Exception:
             cmd = _build_command("fix this error", settings)
             exception = traceback.format_exc()
+            logger.info(
+                "Error executing 'then' step, retrying... (attempt %s of %s)",
+                i + 1,
+                max_retries,
+            )
             res = subprocess.run(
                 cmd, input=exception, cwd=tmp_path, text=True, env=request.env
             )
