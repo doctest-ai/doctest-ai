@@ -4,6 +4,8 @@ version = "0.0.1"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.9"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 classifiers = [
     "Framework :: Pytest",
 ]
