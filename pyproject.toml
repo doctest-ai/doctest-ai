@@ -1,7 +1,7 @@
 [project]
 name = "doctest-ai"
-version = "0.0.1"
-description = "Add your description here"
+version = "0.1.0"
+description = "A pytest plugin that enables testing agentic coding workflows using pytest-bdd."
 readme = "README.md"
 requires-python = ">=3.9"
 license = "Apache-2.0"
