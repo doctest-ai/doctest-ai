@@ -1,6 +1,6 @@
-# Docs under test — pandera
+# Docs under test — pandera 0.32.1
 
-TODO(vet): replace this placeholder with a version-matched snapshot of the
-pandera documentation for the pinned release — at minimum the DataFrameSchema
-guide and the experimental Narwhals backend guide. The snapshot is what the
-`docs` arm mounts; keep it in sync with `PANDERA_*_PIN` in `conftest.py`.
+Version-matched snapshot fetched from
+`https://github.com/unionai-oss/pandera` at tag `v0.32.1`
+(`docs/source/{narwhals_backend,dataframe_schemas,polars}.md`). Keep in sync
+with `PANDERA_VERSION` in `../conftest.py`.

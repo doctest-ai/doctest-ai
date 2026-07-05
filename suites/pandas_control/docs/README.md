@@ -1,6 +1,7 @@
-# Docs under test — pandas (control)
+# Docs under test — pandas 2.3.3 (control)
 
-TODO(vet): replace this placeholder with a version-matched snapshot of the
-relevant pandas user-guide pages (missing data, groupby, IO). The control arm
-must be a good-faith docs arm — the expected result is that it still moves the
-needle ~0 points on a saturated-priors library.
+Version-matched snapshot fetched from
+`https://github.com/pandas-dev/pandas` at tag `v2.3.3`
+(`doc/source/user_guide/{missing_data,groupby,io}.rst`). Keep in sync with
+`PANDAS_PIN` in `../conftest.py`. The expected result is that even this
+good-faith docs arm moves the needle ~0 points on a saturated-priors library.
