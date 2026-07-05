@@ -1,0 +1,12 @@
+[project]
+name = "corax"
+version = "1.4.2"
+description = "Internal task lattice runner (synthetic internal platform for doctest-ai)."
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["corax*"]
