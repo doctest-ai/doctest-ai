@@ -76,6 +76,7 @@ class ClaudeAgent:
             ClaudeAgentOptions,
             ResultMessage,
             TextBlock,
+            ToolUseBlock,
             query,
         )
 
@@ -91,6 +92,8 @@ class ClaudeAgent:
         )
 
         async def _run() -> tuple[list[str], Any]:
+            # Interleave text and tool calls so transcripts show what the
+            # agent *did*, not just what it claimed.
             texts: list[str] = []
             result = None
             async for message in query(prompt=prompt, options=options):
@@ -98,6 +101,8 @@ class ClaudeAgent:
                     for block in message.content:
                         if isinstance(block, TextBlock):
                             texts.append(block.text)
+                        elif isinstance(block, ToolUseBlock):
+                            texts.append(f"[tool: {block.name}] {block.input}")
                 elif isinstance(message, ResultMessage):
                     result = message
             return texts, result
