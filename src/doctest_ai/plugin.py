@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -160,10 +161,18 @@ def docs_sources():
 
 
 @pytest.fixture
-def workspace(request, tmp_path):
-    """Isolated working directory (with its own venv) the agent acts on."""
-    _setup_minimal_env(request)
+def workspace(tmp_path):
+    """Isolated working directory the agent acts on."""
     return tmp_path
+
+
+@pytest.fixture
+def workspace_env(workspace):
+    """Environment dict pointing at the workspace's own virtual environment."""
+    run(["uv", "venv"], cwd=workspace, check=True)
+    context = SimpleNamespace()
+    _setup_context_with_venv(context, workspace / ".venv")
+    return context.env
 
 
 @pytest.fixture
@@ -184,7 +193,14 @@ def agent_backend_factory():
 
 @pytest.fixture
 def agent(
-    request, workspace, docs_arm, rep, docs_sources, settings, agent_backend_factory
+    request,
+    workspace,
+    workspace_env,
+    docs_arm,
+    rep,
+    docs_sources,
+    settings,
+    agent_backend_factory,
 ):
     """The agent under the current docs arm, acting on ``workspace``."""
     try:
@@ -211,7 +227,7 @@ def agent(
     return TaskAgent(
         backend,
         cwd=workspace,
-        env=getattr(request, "env", None),
+        env=workspace_env,
         record=record,
         preamble=spec.prompt_preamble,
         max_retries=Settings().max_retries or 0,

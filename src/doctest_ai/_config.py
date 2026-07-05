@@ -6,7 +6,7 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
-from doctest_ai.agent import DEFAULT_DISALLOWED_TOOLS
+from doctest_ai.agent import DEFAULT_ALLOWED_TOOLS, DEFAULT_DISALLOWED_TOOLS
 
 
 class Settings(BaseSettings):
@@ -35,7 +35,9 @@ class Settings(BaseSettings):
 class ClaudeCodeSettings(BaseSettings):
     """Configuration to set the CLI options available in Claude Code."""
 
-    allowed_tools: list[str] = Field(default_factory=list)
+    allowed_tools: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_ALLOWED_TOOLS)
+    )
     disallowed_tools: list[str] = Field(
         default_factory=lambda: list(DEFAULT_DISALLOWED_TOOLS)
     )

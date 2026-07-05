@@ -16,8 +16,12 @@ from typing import Any, Callable, Protocol, runtime_checkable
 
 DEFAULT_MODEL = "claude-sonnet-5"
 
-# Headless runs must never fall back to general web access; docs under test
-# should be the only external information channel.
+# The agent should be fully capable locally — the ablation varies only the
+# docs, so capability must not be the binding constraint...
+DEFAULT_ALLOWED_TOOLS = ["Bash", "Edit", "Glob", "Grep", "Read", "Write"]
+
+# ...but headless runs must never fall back to general web access; the docs
+# under test are the only external information channel.
 DEFAULT_DISALLOWED_TOOLS = ["WebSearch", "WebFetch"]
 
 
@@ -77,13 +81,13 @@ class ClaudeAgent:
 
         options = ClaudeAgentOptions(
             model=self.model,
-            allowed_tools=self.allowed_tools or None,
-            disallowed_tools=self.disallowed_tools or None,
-            mcp_servers=self.mcp_servers or None,
+            allowed_tools=list(self.allowed_tools),
+            disallowed_tools=list(self.disallowed_tools),
+            mcp_servers=dict(self.mcp_servers),
             system_prompt=self.system_prompt,
             max_turns=self.max_turns,
             cwd=str(cwd),
-            env=env,
+            env=dict(env) if env else {},
         )
 
         async def _run() -> tuple[list[str], Any]:

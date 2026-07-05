@@ -13,8 +13,8 @@ class MarkerDocs:
 
 
 @pytest.fixture
-def workspace(tmp_path):
-    return tmp_path
+def workspace_env():
+    return None  # skip venv creation; FakeAgent never shells out
 
 
 @pytest.fixture
@@ -95,8 +95,8 @@ from doctest_ai.docs import NoDocs
 
 
 @pytest.fixture
-def workspace(tmp_path):
-    return tmp_path
+def workspace_env():
+    return None  # skip venv creation; FakeAgent never shells out
 
 
 @pytest.fixture
