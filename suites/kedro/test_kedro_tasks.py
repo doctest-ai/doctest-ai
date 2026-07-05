@@ -43,8 +43,8 @@ def test_write_integration_test(agent, workspace, install, run_cmd):
 
 @doctest_ai.task(id="kedro-new-pipeline", arms=ARMS)
 def test_create_and_register_pipeline(agent, workspace, install, run_cmd):
-    # TODO(vet): confirm the prompt/verifier pair on a hand-written solution
-    # for the pinned Kedro version before running the ablation.
+    # Verifier vetted on kedro 1.5.0: a hand-written pipelines/report package
+    # (auto-discovered) exits 0; the bare project exits 1 (no nodes).
     install(KEDRO_PIN)
     project = _new_project(run_cmd, workspace, example="no")
     agent.cwd = project
