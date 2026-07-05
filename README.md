@@ -1,133 +1,105 @@
 # doctest-ai
 
-A pytest plugin that enables testing agentic coding workflows using pytest-bdd.
+Measure how much your documentation actually contributes to whether AI coding
+agents succeed.
 
 ## What is doctest-ai?
 
-`doctest-ai` allows you to write behavioral tests in natural language using Gherkin syntax (`.feature` files), and have a coding agent execute the `When` step. This is particularly useful for:
+Tools like Fern's Agent Score check whether agents can *read* your docs.
+`doctest-ai` measures whether reading them makes agents *succeed*: it runs the
+same tasks with and without your docs and reports the difference —
 
-- Testing AI-assisted code generation workflows
-- Validating that AI can correctly implement framework-specific tasks
+```
+Docs Delta = success(with docs) − success(without docs)
+```
 
-`doctest-ai` is intended for testing agentic coding workflows, not for automating testing workflows using AI. You need to define the initial context (`Given` steps) and expected outcome (`Then` steps).
+— with honest confidence intervals, because agent runs are stochastic. If the
+model's priors already cover your framework, the delta is ~0 no matter how
+nice your docs are; if your last release broke every assistant's priors, the
+delta is what your docs recover.
+
+A *task* is a plain pytest test: you set up a workspace, hand the agent a
+prompt, and verify the outcome deterministically — real code runs, objective
+pass/fail, no LLM-judging-LLM.
+
+```python
+import doctest_ai
+
+
+@doctest_ai.task(id="new-pipeline", arms=["none", "docs"])
+def test_new_pipeline(agent, workspace, run_cmd):
+    def check():
+        res = run_cmd("kedro", "run")
+        assert res.returncode == 0, res.stdout + res.stderr
+
+    agent.solve("add a pipeline that ... and make `kedro run` succeed", check)
+```
+
+The plugin parametrizes every task across **docs arms** (which docs the agent
+gets: none, an llms.txt, an MCP docs server, a mounted docs directory) and
+**repetitions**, records one JSONL line per run, and `doctest-ai report`
+renders the ablation with Wilson intervals and a paired-bootstrap delta.
 
 ## Prerequisites
 
-Before using `doctest-ai`, ensure you have the following tools installed on your system:
-
-- **Claude Code**: https://code.claude.com/docs/en/setup
+- **Claude Code**: https://code.claude.com/docs/en/setup — headless runs bill
+  at API rates; set `ANTHROPIC_API_KEY`.
 - **uv**: https://docs.astral.sh/uv/getting-started/installation/
 
 ## Installation
 
-Install `doctest-ai` from PyPI using `uv` or `pip`:
-
 ```bash
-uv pip install doctest-ai
-```
-
-or
-
-```bash
-pip install doctest-ai
+uv pip install doctest-ai        # plain pytest API
+uv pip install 'doctest-ai[bdd]' # + the legacy pytest-bdd/Gherkin adapter
 ```
 
 ## Quickstart
 
-The `examples/` folder contains several working examples that demonstrate how to use `doctest-ai`:
-
-### Available Examples
-
-- **`examples/dlt/`** - Testing dlt project creation and execution
-- **`examples/kedro/`** - Testing Kedro project scaffolding
-
-### Running an Example
-
-1. Navigate to an example directory:
-
-```bash
-cd examples/dlt
-```
-
-2. Run the test with pytest:
-
-```bash
-pytest test_init.py
-```
-
-### Example: dlt Project Creation
-
-The `examples/dlt/init.feature` file defines a test scenario:
-
-```gherkin
-Feature: New dlt project
-
-  Background:
-    Given I have installed dlt
-
-  Scenario: Create a new dlt project
-    Given I have configured the following CLI options in Claude Code:
-      | allowed_tools | Write,Bash(python pokemon_pipeline.py:*),Edit |
-    When I ask Claude to create a dlt project with a single pipeline that loads data from the Pokemon API and stores it in a local directory
-    Then the pipeline runs successfully
-```
-
-The corresponding `test_init.py` implements the "Then" step:
+Declare the docs arms in your `conftest.py`:
 
 ```python
-from doctest_ai.sh_run import run
-from pytest_bdd import given, parsers, scenario, then
+import pytest
 
-OK_EXIT_CODE = 0
-
-
-@scenario("init.feature", "Create a new dlt project")
-def test_init():
-    pass
+from doctest_ai import DocsDir, LLMsTxt, MCPDocs, NoDocs
 
 
-@given(parsers.parse("I have installed {package}"))
-def install_package(request, package):
-    """Install the specified package."""
-    run(["uv", "pip", "install", package], check=True, env=request.env)
-
-
-@then("the pipeline runs successfully")
-def run_pipeline(request, tmp_path):
-    res = run(["python", "pokemon_pipeline.py"], cwd=tmp_path, env=request.env)
-    assert res.returncode == OK_EXIT_CODE, res
+@pytest.fixture
+def docs_sources():
+    return {
+        "none": NoDocs(),                       # baseline: priors only
+        "llms-txt": LLMsTxt("https://example.dev/llms.txt"),
+        "docs": DocsDir("path/to/docs-snapshot"),
+    }
 ```
 
-When you run `pytest test_init.py`, the test will:
+Write tasks (see `suites/` for the report-grade examples: Kedro 1.x,
+Pandera's Narwhals backend, and a pandas control), then run the ablation:
 
-1. Install dlt in a temporary virtual environment
-2. Configure Claude Code with the specified CLI options
-3. Ask Claude to create the dlt project
-4. Verify the pipeline runs successfully
+```bash
+pytest suites/kedro --doctest-reps=10 --doctest-artifact=results/kedro.jsonl
+doctest-ai report results/kedro.jsonl
+```
+
+```
+## Docs Delta (vs `none`)
+
+### `mcp`: **+47pts** [+3pts, +90pts] (significant; 3 tasks, paired bootstrap)
+```
+
+Per-run transcripts land in `<artifact>.d/` for triaging failures.
 
 ## Configuration
 
-### Project Settings
+Under `[tool.doctest-ai]` in `pyproject.toml`:
 
-You can configure `doctest-ai` behavior through `pyproject.toml` (under the `[tool.doctest-ai]` section):
+- `max_retries` — agentic retry loop: on a failed check, the error is fed
+  back to the agent (distinguishes success@1 from success@N; both reported)
+- `reps`, `arms`, `artifact` — defaults for the CLI options
 
-- `max_retries`: Number of times to retry if a test fails (enables agentic loop)
+Under `[tool.doctest-ai.claude-code]`: `model`, `allowed_tools`,
+`disallowed_tools` (defaults disable `WebSearch`/`WebFetch` so the docs under
+test are the only external channel), `max_turns`.
 
-### Claude Code Settings
-
-You can specify Claude Code options for your project in `pyproject.toml` (under the `[tool.doctest-ai.claude-code]` section):
-
-```toml
-[tool.doctest-ai.claude-code]
-model = "claude-3-7-sonnet-20250219"
-```
-
-You can also configure Claude Code options in your test scenarios using the `Given` step:
-
-```gherkin
-Given I have configured the following CLI options in Claude Code:
-  | allowed_tools | Write,Bash,Edit |
-  | model         | sonnet          |
-```
-
-Configuration at the scenario level overrides overlapping configuration at the project level.
+Swap the agent runtime by overriding the `agent_backend_factory` fixture —
+Claude Code (via the official `claude-agent-sdk`) is the first backend, and
+`FakeAgent` makes the whole harness testable without spending tokens.
