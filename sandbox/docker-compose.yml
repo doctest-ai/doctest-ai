@@ -1,0 +1,33 @@
+services:
+  proxy:
+    build: ./proxy
+    environment:
+      EXTRA_ALLOWED_HOSTS: ${EXTRA_ALLOWED_HOSTS:-}
+    networks:
+      - internal
+      - egress
+
+  runner:
+    build:
+      context: ..
+      dockerfile: sandbox/runner/Dockerfile
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY for sandboxed runs}
+      HTTP_PROXY: http://proxy:8888
+      HTTPS_PROXY: http://proxy:8888
+      http_proxy: http://proxy:8888
+      https_proxy: http://proxy:8888
+      NO_PROXY: localhost,127.0.0.1
+      UV_HTTP_TIMEOUT: "120"
+    working_dir: /work
+    volumes:
+      - ../results:/work/results
+    depends_on:
+      - proxy
+    networks:
+      - internal
+
+networks:
+  internal:
+    internal: true
+  egress: {}
