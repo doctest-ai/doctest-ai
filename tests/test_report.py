@@ -15,6 +15,8 @@ def test_build_report_sections():
     report = build_report(records, baseline="none")
     assert "# Docs Delta report" in report
     assert "claude-sonnet-5" in report
+    assert "## Arm summaries" in report
+    assert "| docs | 8 | 8/8 | $0.05 | 0 |" in report
     assert "| t1 | none | 0/4 |" in report
     assert "| t1 | docs | 4/4 |" in report
     assert "## Docs Delta (vs `none`)" in report

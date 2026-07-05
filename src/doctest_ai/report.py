@@ -38,6 +38,26 @@ def build_report(records: list[dict], baseline: str = "none") -> str:
         f"- Runs: {len(records)} | Arms: {', '.join(arms)} | "
         f"Total agent cost: ${total_cost:.2f}",
         "",
+        "## Arm summaries",
+        "",
+        "| Arm | Runs | Passed | Mean cost | Mean turns |",
+        "|---|---|---|---|---|",
+    ]
+
+    for arm in arms:
+        rows = [r for r in records if r["arm"] == arm and r.get("passed") is not None]
+        if not rows:
+            continue
+        k = sum(bool(r["passed"]) for r in rows)
+        mean_cost = sum(r.get("cost_usd") or 0.0 for r in rows) / len(rows)
+        mean_turns = sum(r.get("num_turns") or 0 for r in rows) / len(rows)
+        lines.append(
+            f"| {arm} | {len(rows)} | {k}/{len(rows)} | "
+            f"${mean_cost:.2f} | {mean_turns:.0f} |"
+        )
+
+    lines += [
+        "",
         "## Pass rates by task and arm",
         "",
         "| Task | Arm | Passed | Rate [95% CI] | success@1 |",
@@ -66,10 +86,11 @@ def build_report(records: list[dict], baseline: str = "none") -> str:
             except ValueError:
                 continue
             verdict = "significant" if delta.significant else "not significant"
+            noun = "task" if delta.n_tasks == 1 else "tasks"
             lines += [
                 f"### `{arm}`: **{_pts(delta.point)}** "
                 f"[{_pts(delta.ci_low)}, {_pts(delta.ci_high)}] "
-                f"({verdict}; {delta.n_tasks} tasks, paired bootstrap)",
+                f"({verdict}; {delta.n_tasks} {noun}, paired bootstrap)",
                 "",
                 "| Task | Rate (baseline) | Rate (arm) | Delta |",
                 "|---|---|---|---|",
