@@ -25,7 +25,10 @@ doctest-ai = "doctest_ai:main"
 doctest-ai = "doctest_ai.plugin"
 
 [dependency-groups]
-dev = ["pytest-bdd>=8.1.0"]
+dev = [
+    "pytest-bdd>=8.1.0",
+    "pytest-xdist>=3.8.0",
+]
 
 [build-system]
 requires = ["uv_build>=0.8.2,<0.9.0"]

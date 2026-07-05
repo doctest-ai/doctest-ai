@@ -18,8 +18,10 @@ arms (`docs_sources` fixture) and setup helpers; each task is a
 pytest suites/kedro -k integration --doctest-reps=5 \
   --doctest-artifact=results/kedro-signal.jsonl
 
-# Full ablation for one suite
-pytest suites/kedro --doctest-reps=10 --doctest-artifact=results/kedro.jsonl
+# Full ablation for one suite (parallel: workspaces are independent, and
+# JSONL appends are line-atomic; scale -n to your rate limits)
+pytest suites/kedro --doctest-reps=10 -n 4 \
+  --doctest-artifact=results/kedro.jsonl
 
 # Render the report
 doctest-ai report results/kedro.jsonl
