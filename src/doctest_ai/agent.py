@@ -102,7 +102,13 @@ class ClaudeAgent:
                     result = message
             return texts, result
 
-        texts, result = anyio.run(_run)
+        try:
+            texts, result = anyio.run(_run)
+        except Exception as exc:
+            # Surfaces CLI-side failures (auth, usage limits, crashes) with a
+            # actionable label; subscription limits are the common culprit on
+            # unkeyed runs.
+            raise AgentError(f"Claude Code run failed: {exc}") from exc
         if result is None:
             raise AgentError("claude-agent-sdk returned no result message")
         return AgentResult(
