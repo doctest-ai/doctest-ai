@@ -41,7 +41,7 @@ def main() -> None:
     meta = getattr(fn, "__corax_strut__", None)
     if meta is None:
         _fail(f"{target!r} is not a registered strut (missing @corax.strut)")
-    if meta["team"] not in APPROVED_TEAMS:
+    if meta["via"] != "job" and meta["team"] not in APPROVED_TEAMS:
         _fail(f"team {meta['team']!r} is not an approved owner")
 
     basin = Basin()

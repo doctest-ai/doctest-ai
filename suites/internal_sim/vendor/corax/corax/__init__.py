@@ -26,7 +26,16 @@ def strut(*, team: str):
     """Register a function as a runnable strut owned by ``team``."""
 
     def wrap(fn):
-        fn.__corax_strut__ = {"team": team}
+        fn.__corax_strut__ = {"team": team, "via": "strut"}
         return fn
 
     return wrap
+
+
+def job(fn):
+    """Register a function as a runnable job.
+
+    Team-less registration; runs under the shared ``unassigned`` owner.
+    """
+    fn.__corax_strut__ = {"team": "unassigned", "via": "job"}
+    return fn

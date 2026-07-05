@@ -39,3 +39,11 @@ scripts do not pass the audit.
    The runner executes the strut and persists its deposits to
    `<name>.out.json` (sorted keys). A strut that deposits nothing, is not
    decorated, or declares an unapproved team fails the run.
+
+## Legacy registration (`@corax.job`) — do not use
+
+`@corax.job` (team-less registration under the shared `unassigned` owner)
+still runs, but it predates team ownership and is **not permitted for new
+jobs**: unowned jobs page nobody when they break. All new jobs must register
+with `@corax.strut(team=...)` and the owning team. Analytics and reporting
+jobs belong to `data-eng`.
