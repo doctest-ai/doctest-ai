@@ -29,6 +29,12 @@ Requires `ANTHROPIC_API_KEY` (headless agent runs bill at API rates) and the
 `claude` CLI installed. Transcripts land next to the artifact in
 `<artifact>.d/` — read them when triaging any failure you intend to publish.
 
+Do not run report batches on subscription auth: headless runs share the
+interactive session pool, and hitting the limit mid-batch fails the
+remaining runs with an opaque `AgentError` (observed in practice). Budget
+roughly $0.15–1.30 per run at Sonnet prices depending on task size; a
+`max_turns` cap in `[tool.doctest-ai.claude-code]` bounds the worst case.
+
 ## Vetting checklist (before any published number)
 
 - [ ] Framework version pinned exactly; docs artifact matches that version
