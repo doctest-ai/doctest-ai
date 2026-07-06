@@ -31,9 +31,16 @@ def test_daily_summary_strut(agent, corax_workspace, run_cmd):
 
 
 # Both registration paths *work*; only the docs say which one is sanctioned
-# (@corax.strut with the owning team — data-eng for analytics). This is the
-# knowledge source cannot encode: the code channel sees two equally valid
-# APIs, so a code-alone agent must guess.
+# (@corax.strut with the owning team). The sanctioned owner for analytics is
+# ml-platform for an org-historical reason stated only in the docs — the
+# semantically natural guess (data-eng) is a valid team that fails review, so
+# a code-alone pass cannot happen by lucky inference. This is the knowledge
+# source cannot encode: the code channel sees two equally valid APIs and
+# three equally valid teams.
+#
+# Assertion messages deliberately do not name the sanctioned team: on
+# retry-enabled runs the traceback is fed back to the agent, and leaking the
+# answer there would let the no-docs arm recover without the docs.
 CONVENTION_DRIVER = """
 import importlib
 import sys
@@ -46,10 +53,11 @@ sys.path.insert(0, ".")
 fn = getattr(importlib.import_module(module_name), func_name)
 meta = fn.__corax_strut__
 assert meta["via"] == "strut", (
-    f"legacy @corax.job registration is not permitted for new jobs: {meta}"
+    "platform review: legacy @corax.job registration is not permitted for new jobs"
 )
-assert meta["team"] == "data-eng", (
-    f"analytics jobs belong to data-eng, not {meta['team']!r}"
+assert meta["team"] == "ml-platform", (
+    f"platform review: {meta['team']!r} is not the owning team for analytics "
+    "struts; see the platform docs for team ownership"
 )
 """
 
