@@ -9,6 +9,7 @@ from pathlib import Path
 
 from doctest_ai.stats import (
     bootstrap_delta,
+    bootstrap_metric_delta,
     load_records,
     outcomes_by_task,
     pass_rate,
@@ -23,6 +24,15 @@ def _pct(x: float) -> str:
 
 def _pts(x: float) -> str:
     return f"{100 * x:+.0f}pts"
+
+
+def _turns(x: float) -> str:
+    return f"{x:+.1f}"
+
+
+def _usd(x: float) -> str:
+    sign = "+" if x >= 0 else "-"
+    return f"{sign}${abs(x):.2f}"
 
 
 def build_report(records: list[dict], baseline: str = "none") -> str:
@@ -101,6 +111,38 @@ def build_report(records: list[dict], baseline: str = "none") -> str:
                     f"| {_pct(row['arm_rate'])} | {_pts(row['delta'])} |"
                 )
             lines.append("")
+
+        efficiency_rows = []
+        for arm in treatment_arms:
+            cells = []
+            for metric, fmt in (("num_turns", _turns), ("cost_usd", _usd)):
+                try:
+                    d = bootstrap_metric_delta(records, baseline, arm, metric=metric)
+                except ValueError:
+                    cells.append("—")
+                    continue
+                mark = "*" if d.significant else ""
+                cells.append(
+                    f"{fmt(d.point)}{mark} [{fmt(d.ci_low)}, {fmt(d.ci_high)}] "
+                    f"({d.n_tasks})"
+                )
+            if any(c != "—" for c in cells):
+                efficiency_rows.append(f"| {arm} | {cells[0]} | {cells[1]} |")
+        if efficiency_rows:
+            lines += [
+                f"## Efficiency Delta (among passing runs, vs `{baseline}`)",
+                "",
+                "Docs can pay in fewer turns and lower cost even where both",
+                "arms pass. Failed runs are excluded (their turn counts measure",
+                "where the agent gave up, not what success costs); `(n)` is the",
+                "number of tasks with passing runs in both arms; `*` marks a",
+                "95% CI excluding zero.",
+                "",
+                "| Arm | Mean turns delta [95% CI] | Mean cost delta [95% CI] |",
+                "|---|---|---|",
+                *efficiency_rows,
+                "",
+            ]
 
     return "\n".join(lines) + "\n"
 

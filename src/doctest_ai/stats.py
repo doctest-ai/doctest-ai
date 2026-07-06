@@ -55,6 +55,50 @@ def pass_rate(outcomes: list[bool]) -> float:
     return sum(outcomes) / len(outcomes) if outcomes else 0.0
 
 
+def values_by_task(
+    records: list[dict], arm: str, metric: str, *, passed_only: bool = True
+) -> dict[str, list[float]]:
+    """Map task_id -> numeric metric values (one per rep) for one arm."""
+    result: dict[str, list[float]] = {}
+    for record in records:
+        if record["arm"] != arm or record.get(metric) is None:
+            continue
+        if passed_only and not record.get("passed"):
+            continue
+        result.setdefault(record["task_id"], []).append(float(record[metric]))
+    return result
+
+
+def _mean(values: list[float]) -> float:
+    return sum(values) / len(values)
+
+
+def _paired_bootstrap(
+    base: dict[str, list[float]],
+    treat: dict[str, list[float]],
+    tasks: list[str],
+    n_boot: int,
+    seed: int,
+) -> tuple[float, float, float]:
+    """Two-level bootstrap of the mean per-task difference ``treat - base``."""
+    point = sum(_mean(treat[t]) - _mean(base[t]) for t in tasks) / len(tasks)
+    rng = random.Random(seed)
+    deltas = []
+    for _ in range(n_boot):
+        sampled_tasks = [tasks[rng.randrange(len(tasks))] for _ in tasks]
+        total = 0.0
+        for t in sampled_tasks:
+            b, a = base[t], treat[t]
+            rb = sum(b[rng.randrange(len(b))] for _ in b) / len(b)
+            ra = sum(a[rng.randrange(len(a))] for _ in a) / len(a)
+            total += ra - rb
+        deltas.append(total / len(sampled_tasks))
+    deltas.sort()
+    lo = deltas[max(0, int(0.025 * n_boot))]
+    hi = deltas[min(n_boot - 1, int(0.975 * n_boot))]
+    return point, lo, hi
+
+
 @dataclass
 class DeltaEstimate:
     """Suite-level docs contribution: mean per-task pass-rate difference."""
@@ -96,22 +140,7 @@ def bootstrap_delta(
             f"no tasks have data in both arms {baseline!r} and {arm!r}"
         )
 
-    point = sum(pass_rate(treat[t]) - pass_rate(base[t]) for t in tasks) / len(tasks)
-
-    rng = random.Random(seed)
-    deltas = []
-    for _ in range(n_boot):
-        sampled_tasks = [tasks[rng.randrange(len(tasks))] for _ in tasks]
-        total = 0.0
-        for t in sampled_tasks:
-            b, a = base[t], treat[t]
-            rb = sum(b[rng.randrange(len(b))] for _ in b) / len(b)
-            ra = sum(a[rng.randrange(len(a))] for _ in a) / len(a)
-            total += ra - rb
-        deltas.append(total / len(sampled_tasks))
-    deltas.sort()
-    lo = deltas[max(0, int(0.025 * n_boot))]
-    hi = deltas[min(n_boot - 1, int(0.975 * n_boot))]
+    point, lo, hi = _paired_bootstrap(base, treat, tasks, n_boot, seed)
     return DeltaEstimate(
         arm=arm,
         baseline=baseline,
@@ -120,6 +149,67 @@ def bootstrap_delta(
         ci_high=hi,
         n_tasks=len(tasks),
         n_boot=n_boot,
+    )
+
+
+@dataclass
+class MetricDelta:
+    """Suite-level difference in a numeric per-run metric (arm - baseline)."""
+
+    arm: str
+    baseline: str
+    metric: str
+    point: float
+    ci_low: float
+    ci_high: float
+    n_tasks: int
+    n_boot: int
+    passed_only: bool
+
+    @property
+    def significant(self) -> bool:
+        """Whether the 95% CI excludes zero."""
+        return self.ci_low > 0 or self.ci_high < 0
+
+
+def bootstrap_metric_delta(
+    records: list[dict],
+    baseline: str,
+    arm: str,
+    *,
+    metric: str = "num_turns",
+    passed_only: bool = True,
+    n_boot: int = 2000,
+    seed: int = 0,
+) -> MetricDelta:
+    """Paired two-level bootstrap of a numeric metric's suite delta.
+
+    The efficiency counterpart to :func:`bootstrap_delta`: on suites where
+    both arms pass, docs can still buy fewer turns and lower cost. By default
+    only passing runs contribute — a failed run's turn count measures where
+    the agent gave up, not what success costs — so the claim reads "among
+    successful runs". Tasks without a passing run in both arms drop out of
+    the pairing.
+    """
+    base = values_by_task(records, baseline, metric, passed_only=passed_only)
+    treat = values_by_task(records, arm, metric, passed_only=passed_only)
+    tasks = sorted(set(base) & set(treat))
+    if not tasks:
+        raise ValueError(
+            f"no tasks have {metric!r} data in both arms {baseline!r} and {arm!r}"
+        )
+
+    point, lo, hi = _paired_bootstrap(base, treat, tasks, n_boot, seed)
+    return MetricDelta(
+        arm=arm,
+        baseline=baseline,
+        metric=metric,
+        point=point,
+        ci_low=lo,
+        ci_high=hi,
+        n_tasks=len(tasks),
+        n_boot=n_boot,
+        passed_only=passed_only,
     )
 
 

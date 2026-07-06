@@ -1,7 +1,17 @@
-"""Kedro 1.x tasks — the stale-priors headliner.
+"""Kedro 1.x tasks — the efficiency suite.
 
-Without docs, agents tend to produce pre-1.0 Kedro code (old ConfigLoader,
-old project layout, removed CLI flags); the docs arm should rescue them.
+Pre-registered framing (decided 2026-07-06, before the full batch): the
+primary metrics for this suite are EFFICIENCY and RELIABILITY — turns and
+cost among passing runs, plus success@1 — not the pass rate.
+
+The original stale-priors hypothesis (agents write pre-1.0 Kedro code and
+fail without docs) did not survive the signal check: current models recover
+via priors, reading installed source, and iterating against `kedro run`
+errors, so both arms pass. What the signal check did show is a large spread
+in *how* they pass (no-docs: 46 turns/$1.24 brute-forcing runner semantics;
+docs: fewer turns via targeted MCP lookups). Runs are capped at a
+pre-registered turn budget (see conftest) as cost control; a run that
+exhausts the budget is recorded as a failure and disclosed as such.
 """
 
 import doctest_ai
