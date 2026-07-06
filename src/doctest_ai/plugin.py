@@ -16,10 +16,11 @@ from types import SimpleNamespace
 import pytest
 
 from doctest_ai._config import ClaudeCodeSettings, Settings
-from doctest_ai.agent import DEFAULT_MODEL, ClaudeAgent
+from doctest_ai.agent import DEFAULT_MODEL, AgentError, ClaudeAgent
 from doctest_ai.docs import DocsSpec, NoDocs
 from doctest_ai.runner import Recorder, RunRecord, TaskAgent
 from doctest_ai.sh_run import run
+from doctest_ai.stats import load_records
 
 # --------------------------------------------------------------------------
 # Isolated-venv machinery (each run gets a clean virtual environment)
@@ -92,6 +93,16 @@ def pytest_addoption(parser):
         default=None,
         help="JSONL file to append one record per (task, arm, rep) run to.",
     )
+    group.addoption(
+        "--doctest-resume",
+        dest="doctest_resume",
+        action="store_true",
+        default=False,
+        help="Skip (task, arm, rep) runs already completed in the artifact, "
+        "so an interrupted batch can be re-run with the same command. Runs "
+        "recorded without an outcome (agent-runtime failures such as usage "
+        "limits) are retried.",
+    )
 
 
 def pytest_configure(config):
@@ -102,6 +113,13 @@ def pytest_configure(config):
     )
     artifact = config.getoption("doctest_artifact") or Settings().artifact
     config._doctest_ai_recorder = Recorder(Path(artifact) if artifact else None)
+
+    completed: set[tuple[str, str, int]] = set()
+    if config.getoption("doctest_resume") and artifact and Path(artifact).is_file():
+        for record in load_records(artifact):
+            if record.get("passed") is not None:
+                completed.add((record["task_id"], record["arm"], record["rep"]))
+    config._doctest_ai_completed = completed
 
     try:
         import pytest_bdd  # noqa: F401
@@ -129,6 +147,30 @@ def pytest_generate_tests(metafunc):
         metafunc.parametrize("docs_arm", arms)
     if "rep" in metafunc.fixturenames:
         metafunc.parametrize("rep", range(reps), ids=[f"rep{i}" for i in range(reps)])
+
+
+def _task_id(node) -> str:
+    marker = node.get_closest_marker("doctest_ai_task")
+    return (
+        (marker.kwargs.get("task_id") if marker else None)
+        or getattr(node, "originalname", None)
+        or node.name
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    completed = getattr(config, "_doctest_ai_completed", None)
+    if not completed:
+        return
+    skip = pytest.mark.skip(reason="already recorded in the artifact (resume)")
+    for item in items:
+        if item.get_closest_marker("doctest_ai_task") is None:
+            continue
+        callspec = getattr(item, "callspec", None)
+        params = callspec.params if callspec else {}
+        key = (_task_id(item), params.get("docs_arm", "none"), params.get("rep", 0))
+        if key in completed:
+            item.add_marker(skip)
 
 
 # --------------------------------------------------------------------------
@@ -213,14 +255,11 @@ def agent(
     spec = source.apply(workspace)
     backend = agent_backend_factory(settings, spec)
 
-    marker = request.node.get_closest_marker("doctest_ai_task")
-    task_id = (
-        (marker.kwargs.get("task_id") if marker else None)
-        or getattr(request.node, "originalname", None)
-        or request.node.name
-    )
     record = RunRecord(
-        task_id=task_id, arm=docs_arm, rep=rep, model=getattr(backend, "model", None)
+        task_id=_task_id(request.node),
+        arm=docs_arm,
+        rep=rep,
+        model=getattr(backend, "model", None),
     )
     request.node._doctest_ai_record = record
     recorder: Recorder = request.config._doctest_ai_recorder
@@ -249,8 +288,18 @@ def pytest_runtest_makereport(item, call):
     record: RunRecord | None = getattr(item, "_doctest_ai_record", None)
     if record is None:
         return
-    record.passed = report.passed
     record.duration_s = report.duration
+    if call.excinfo is not None and call.excinfo.errisinstance(AgentError):
+        # The agent *runtime* failed (auth, usage limit, transport) — that is
+        # not a task outcome, so passed stays None: stats ignore the record
+        # and --doctest-resume retries the run instead of counting a phantom
+        # failure against the arm.
+        record.passed = None
+        record.first_attempt_passed = None
+        record.error = str(call.excinfo.value)[-2000:]
+        item.config._doctest_ai_recorder.write(record)
+        return
+    record.passed = report.passed
     if report.failed:
         record.error = str(report.longrepr)[-2000:]
     if record.first_attempt_passed is None:
